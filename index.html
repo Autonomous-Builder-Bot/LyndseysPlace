@@ -146,7 +146,7 @@
   </header>
   <div class="shell">
     <aside class="side left mobile-active" id="furniture-panel">
-      <div class="panel-heading"><div><div class="eyebrow">Your collection</div><h2 class="panel-title">Furniture</h2></div><span class="pill" id="piece-count">8 items</span></div>
+      <div class="panel-heading"><div><div class="eyebrow">Your collection</div><h2 class="panel-title">Furniture</h2></div><span class="pill" id="piece-count">6 items</span></div>
       <div class="piece-list" id="piece-list"></div>
       <div class="button-row"><button type="button" class="btn" id="add-btn">+ Add another piece</button></div>
       <div class="side-note"><strong>Based on your measurements.</strong> Furniture footprints use the dimensions in the handwritten list. The models' heights and appearance are illustrative.</div>
@@ -163,7 +163,7 @@
         <div class="view-bottom"><div class="hint" id="hint"><strong>Tap furniture</strong> to select, drag to move. Use the Edit panel to rotate.</div><span class="scale" id="area-readout">~323 sq ft</span></div>
         <div class="toast" id="toast" aria-live="polite"></div>
       </div>
-      <div class="footnote"><span><strong>Room shape:</strong> Project 3 scan, straightened to 90° corners</span><span>Door and window positions still unknown</span></div>
+      <div class="footnote"><span><strong>Room shape:</strong> Project 3 scan, straightened to 90° corners</span><span>Front and bathroom doors marked · windows not yet mapped</span></div>
     </main>
     <nav class="mobile-tabs" aria-label="Editor panels"><button type="button" data-panel="furniture" class="active">Furniture</button><button type="button" data-panel="edit">Edit & room</button></nav>
     <aside class="side right" id="edit-panel"><div id="inspector"></div></aside>
@@ -172,7 +172,7 @@
 <div class="modal-shade" id="help-modal" role="dialog" aria-modal="true" aria-label="How to use this planner">
   <div class="modal"><h2>Make it feel like home.</h2>
     <p>This is a flexible starting model of the single room from Project 3, not a surveyed architectural plan.</p>
-    <ol><li><strong>Tap any furniture</strong> in the scene or list to select it.</li><li><strong>Drag furniture</strong> to move it. In the Edit panel, use the rotate buttons or angle slider.</li><li><strong>Switch between 2D and 3D.</strong> In 3D, drag empty space to orbit. Pinch to zoom; two fingers pan. In 2D, drag empty space to pan.</li><li><strong>Your changes save automatically</strong> in this browser. Use Share layout to send a link with the arrangement, or Export for a backup.</li><li><strong>Adjust the room</strong> in Edit & room → Room measurements. The little upper-left corner and right-hand step are estimates.</li></ol>
+    <ol><li><strong>Tap any furniture</strong> in the scene or list to select it.</li><li><strong>Drag furniture</strong> to move it. In the Edit panel, use the rotate buttons or angle slider.</li><li><strong>Switch between 2D and 3D.</strong> In 3D, drag empty space to orbit. Pinch to zoom; two fingers pan. In 2D, drag empty space to pan.</li><li><strong>Your changes save automatically</strong> in this browser. Use Share layout to send a link with the arrangement, or Export for a backup.</li><li><strong>Adjust the room</strong> in Edit & room → Room measurements. The little upper-left corner and right-hand step are estimates. Door widths and hinge sides can be adjusted in Edit & room → Doors.</li></ol>
     <div class="actions"><button type="button" class="btn primary" id="close-modal">Start planning</button><button type="button" class="btn" id="import-btn">Import a saved layout</button><button type="button" class="btn" id="snapshot-btn">Save picture</button></div>
   </div>
 </div>
@@ -194,30 +194,44 @@ const CATALOG = {
   cat:{label:'Cat stand',short:'Cat stand',w:19.5,d:19.5,icon:'♧',color:0xc2a884}
 };
 const ROOM_DEFAULT = {top:196.25,upperRight:71.375,rightStep:40.3125,lowerRight:141.125,bottomRight:148.75,bottomLip:17.75,leftBump:28,bumpStart:27,bumpHeight:28,wallHeight:8};
+const DOOR_DEFAULT = [
+  {id:'front',label:'Front door',wall:4,center:109.6,width:32,hinge:'left'},
+  {id:'bathroom',label:'Bathroom door',wall:0,center:16,width:30,hinge:'left'}
+];
 const DEFAULT_ITEMS = [
-  {id:'bed-1',kind:'bed',x:108,y:39,rot:0},
-  {id:'tv-1',kind:'tv',x:162,y:110,rot:0},
-  {id:'couch-1',kind:'couch',x:54,y:109,rot:0},
-  {id:'bedside-1',kind:'bedside',x:167,y:37,rot:0},
-  {id:'long-1',kind:'long',x:151,y:162,rot:0},
-  {id:'glass-1',kind:'glass',x:113,y:122,rot:0},
-  {id:'metal-1',kind:'metal',x:193,y:174,rot:0},
-  {id:'cat-1',kind:'cat',x:34,y:166,rot:0}
+  {id:'bed-1',kind:'bed',x:137,y:43.6,rot:90},
+  {id:'tv-1',kind:'tv',x:223,y:136,rot:90},
+  {id:'couch-1',kind:'couch',x:163.2,y:190.6,rot:180},
+  {id:'bedside-1',kind:'bedside',x:91.2,y:8.8,rot:0},
+  {id:'metal-1',kind:'metal',x:54.8,y:119.2,rot:90},
+  {id:'cat-1',kind:'cat',x:221.4,y:86.2,rot:0}
 ];
 const STORAGE_KEY='lyndseys-place-planner-v1';
 const $=id=>document.getElementById(id);
 const clone=o=>JSON.parse(JSON.stringify(o));
-const defaultState=()=>({room:clone(ROOM_DEFAULT),items:clone(DEFAULT_ITEMS),settings:{mode:'3d',snap:true,walls:true}});
+const defaultState=()=>({room:clone(ROOM_DEFAULT),doors:clone(DOOR_DEFAULT),items:clone(DEFAULT_ITEMS),settings:{mode:'3d',snap:false,walls:true}});
 function validState(s){
   if(!s||!Array.isArray(s.items)||!s.room||typeof s.room!=='object')throw new Error('Not a valid room layout');
   const room={};
-  for(const [key,v] of Object.entries(ROOM_DEFAULT)) {const n=Number(s.room[key]??v);room[key]=Number.isFinite(n)?THREE.MathUtils.clamp(n,key==='wallHeight'?5:0.1,key==='wallHeight'?15:600):v;}
+  for(const [key,v] of Object.entries(ROOM_DEFAULT)){const n=Number(s.room[key]??v);room[key]=Number.isFinite(n)?THREE.MathUtils.clamp(n,key==='wallHeight'?5:.1,key==='wallHeight'?15:600):v;}
+  const legacy=!Array.isArray(s.doors);
   const ids=new Set();
-  const items=s.items.slice(0,100).filter(i=>i&&CATALOG[i.kind]&&Number.isFinite(Number(i.x))&&Number.isFinite(Number(i.y))).map((i,j)=>{
-    let id=String(i.id||`${i.kind}-${j+1}`).slice(0,45); if(ids.has(id))id=`${i.kind}-${j}-${Math.floor(Math.random()*100000)}`; ids.add(id);
-    return {id,kind:i.kind,x:THREE.MathUtils.clamp(Number(i.x),-1000,1000),y:THREE.MathUtils.clamp(Number(i.y),-1000,1000),rot:((Number(i.rot)||0)%360+360)%360};
+  const items=s.items.slice(0,100).filter(i=>{
+    if(!i||!CATALOG[i.kind]||!Number.isFinite(Number(i.x))||!Number.isFinite(Number(i.y)))return false;
+    // Furniture used as temporary door markers in the uploaded November 17 layout.
+    if(legacy&&i.kind==='long'&&Math.abs(Number(i.x)-13.8)<8&&Math.abs(Number(i.y)+8.8)<8)return false;
+    if(legacy&&i.kind==='glass'&&Math.abs(Number(i.x)-109.6)<8&&Math.abs(Number(i.y)-214)<8)return false;
+    return true;
+  }).map((i,j)=>{
+    let id=String(i.id||`${i.kind}-${j+1}`).slice(0,45);if(ids.has(id))id=`${i.kind}-${j}-${Math.floor(Math.random()*100000)}`;ids.add(id);
+    return{id,kind:i.kind,x:THREE.MathUtils.clamp(Number(i.x),-1000,1000),y:THREE.MathUtils.clamp(Number(i.y),-1000,1000),rot:((Number(i.rot)||0)%360+360)%360};
   });
-  return {room,items,settings:{mode:s.settings?.mode==='2d'?'2d':'3d',snap:s.settings?.snap!==false,walls:s.settings?.walls!==false}};
+  const doors=DOOR_DEFAULT.map(d=>{
+    const saved=Array.isArray(s.doors)?s.doors.find(x=>x&&x.id===d.id):null;
+    const center=Number(saved?.center??d.center),width=Number(saved?.width??d.width);
+    return{...d,center:Number.isFinite(center)?THREE.MathUtils.clamp(center,-100,600):d.center,width:Number.isFinite(width)?THREE.MathUtils.clamp(width,20,60):d.width,hinge:saved?.hinge==='right'?'right':'left'};
+  });
+  return{room,doors,items,settings:{mode:s.settings?.mode==='2d'?'2d':'3d',snap:s.settings?.snap!==false,walls:s.settings?.walls!==false}};
 }
 function loadInitial(){
   try {if(location.hash.startsWith('#layout='))return validState(JSON.parse(decodeURIComponent(location.hash.slice(8))));}catch(e){console.warn('Invalid shared layout',e);}
@@ -226,7 +240,7 @@ function loadInitial(){
 }
 let state=loadInitial(), selectedId=null, undoStack=[],redoStack=[], drag=null, toastTimeout=null;
 let roomGroup=new THREE.Group(), itemGroup=new THREE.Group();
-let meshes=new Map(), wallMeshes=[], bounds={width:22,height:18};
+let meshes=new Map(), wallMeshes=[], doorMeshes=[], bounds={width:22,height:18};
 let planePoints=[];
 const canvas=$('scene'), wrap=$('workspace');
 const scene=new THREE.Scene();scene.background=new THREE.Color('#eef1eb');
@@ -325,27 +339,81 @@ function polygonArea(points){let s=0;for(let i=0;i<points.length;i++){const p=po
 function roomWorldPoints(){const p=getRoomPoints(),minx=Math.min(...p.map(q=>q[0])),maxx=Math.max(...p.map(q=>q[0])),miny=Math.min(...p.map(q=>q[1])),maxy=Math.max(...p.map(q=>q[1]));bounds={width:(maxx-minx)/12,height:(maxy-miny)/12};return p.map(([x,y])=>new THREE.Vector2((x-(minx+maxx)/2)/12,(y-(miny+maxy)/2)/12));}
 function worldFromInches(x,y){const p=getRoomPoints(),minx=Math.min(...p.map(q=>q[0])),maxx=Math.max(...p.map(q=>q[0])),miny=Math.min(...p.map(q=>q[1])),maxy=Math.max(...p.map(q=>q[1]));return new THREE.Vector3((x-(minx+maxx)/2)/12,0,(y-(miny+maxy)/2)/12);}
 function inchesFromWorld(v){const p=getRoomPoints(),minx=Math.min(...p.map(q=>q[0])),maxx=Math.max(...p.map(q=>q[0])),miny=Math.min(...p.map(q=>q[1])),maxy=Math.max(...p.map(q=>q[1]));return {x:v.x*12+(minx+maxx)/2,y:v.z*12+(miny+maxy)/2};}
+function doorOpeningsForWall(index,p,q){
+  const vec=q.clone().sub(p),length=vec.length();if(length<.25)return[];
+  const direction=vec.divideScalar(length),edgeY=index===0?0:state.room.upperRight+state.room.lowerRight;
+  return state.doors.filter(d=>d.wall===index).map(door=>{
+    const maxWidth=Math.max(.15,length-.08),width=Math.min(door.width/12,maxWidth);
+    const target=worldFromInches(door.center,edgeY),projection=target.sub(new THREE.Vector3(p.x,0,p.y));
+    const distance=projection.x*direction.x+projection.z*direction.y,margin=Math.min(.03,(length-width)/2);
+    const center=THREE.MathUtils.clamp(distance,width/2+margin,length-width/2-margin);
+    return{door,start:center-width/2,end:center+width/2,width};
+  }).sort((a,b)=>a.start-b.start);
+}
 function buildRoom(){
-  roomGroup.clear();wallMeshes=[];planePoints=roomWorldPoints();
+  roomGroup.clear();wallMeshes=[];doorMeshes=[];planePoints=roomWorldPoints();
   const shape=new THREE.Shape();planePoints.forEach((p,i)=>i===0?shape.moveTo(p.x,-p.y):shape.lineTo(p.x,-p.y));shape.closePath();
   const floor=new THREE.Mesh(new THREE.ShapeGeometry(shape),mat(0xdacbb5,0,.97));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;floor.name='floor';roomGroup.add(floor);
-  const outlinePoints=planePoints.map(p=>new THREE.Vector3(p.x,.035,p.y));
-  const outer=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(outlinePoints),new THREE.LineBasicMaterial({color:0x7e8c79,transparent:true,opacity:.88}));roomGroup.add(outer);
-  // A 1-foot grid, clipped to the irregular footprint.
   const lines=[];
-  const xs=planePoints.map(p=>p.x), zs=planePoints.map(p=>p.y);
+  const xs=planePoints.map(p=>p.x),zs=planePoints.map(p=>p.y);
   const minx=Math.floor(Math.min(...xs)),maxx=Math.ceil(Math.max(...xs));
   const minz=Math.floor(Math.min(...zs)),maxz=Math.ceil(Math.max(...zs));
   for(let x=minx;x<=maxx;x++)for(let z=minz;z<maxz;z+=.25){if(pointInside(x,z+.02)&&pointInside(x,z+.23))lines.push(x,.024,z,x,.024,z+.25);}
   for(let z=minz;z<=maxz;z++)for(let x=minx;x<maxx;x+=.25){if(pointInside(x+.02,z)&&pointInside(x+.23,z))lines.push(x,.024,z,x+.25,.024,z);}
   if(lines.length){const grid=new THREE.BufferGeometry();grid.setAttribute('position',new THREE.Float32BufferAttribute(lines,3));roomGroup.add(new THREE.LineSegments(grid,new THREE.LineBasicMaterial({color:0xbcb7a8,transparent:true,opacity:.27})));}
-  const h=state.room.wallHeight,thickness=.13;
+  const h=state.room.wallHeight,thickness=.13,doorHeight=Math.min(6.67,h-.32);
   for(let i=0;i<planePoints.length;i++){
-    const p=planePoints[i],q=planePoints[(i+1)%planePoints.length];const dx=q.x-p.x,dz=q.y-p.y;const length=Math.hypot(dx,dz);
-    if(length<.04)continue;
-    const wall=new THREE.Mesh(new THREE.BoxGeometry(length,h,thickness),mat(0xf7f4e9,0,.94,true,.40));
-    wall.position.set((p.x+q.x)/2,h/2,(p.y+q.y)/2);wall.rotation.y=-Math.atan2(dz,dx);wall.castShadow=false;wall.receiveShadow=false;roomGroup.add(wall);wallMeshes.push(wall);
-    const topLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(p.x,h,p.y),new THREE.Vector3(q.x,h,q.y)]),new THREE.LineBasicMaterial({color:0xb4b5a7,transparent:true,opacity:.45}));roomGroup.add(topLine);wallMeshes.push(topLine);
+    const p=planePoints[i],q=planePoints[(i+1)%planePoints.length],vec=q.clone().sub(p),length=vec.length();if(length<.04)continue;
+    const direction=vec.clone().divideScalar(length),openings=doorOpeningsForWall(i,p,q);
+    const point=t=>p.clone().addScaledVector(direction,t);
+    const addWall=(a,b,bottom=0,top=h)=>{
+      if(b-a<.015||top-bottom<.015)return;
+      const mid=point((a+b)/2);
+      const mesh=new THREE.Mesh(new THREE.BoxGeometry(b-a,top-bottom,thickness),mat(0xf7f4e9,0,.94,true,.40));
+      mesh.position.set(mid.x,(top+bottom)/2,mid.y);mesh.rotation.y=-Math.atan2(direction.y,direction.x);
+      roomGroup.add(mesh);wallMeshes.push(mesh);
+      // Show the wall footprint in overhead view, leaving doorway gaps.
+      if(bottom===0){
+        const outline=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(point(a).x,.035,point(a).y),new THREE.Vector3(point(b).x,.035,point(b).y)]),new THREE.LineBasicMaterial({color:0x7e8c79,transparent:true,opacity:.88}));
+        roomGroup.add(outline);wallMeshes.push(outline);
+      }
+    };
+    let cursor=0;
+    for(const opening of openings){
+      addWall(cursor,opening.start);
+      addWall(opening.start,opening.end,doorHeight,h); // Real opening beneath a header
+      const a=point(opening.start),b=point(opening.end);
+      const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a.x,.09,a.y),new THREE.Vector3(b.x,.09,b.y)]),new THREE.LineBasicMaterial({color:0x368674,transparent:true,opacity:.85,depthTest:false}));
+      roomGroup.add(line);line.userData.doorPart='threshold';doorMeshes.push(line);
+      // The two vertical jambs visibly frame the opening in the 3D view.
+      for(const jamb of [a,b]){
+        const post=new THREE.Mesh(new THREE.BoxGeometry(.095,doorHeight,.19),mat(0xb49770,0,.75,true,.76));
+        post.position.set(jamb.x,doorHeight/2,jamb.y);roomGroup.add(post);post.userData.doorPart='jamb';doorMeshes.push(post);
+      }
+      const hinge=opening.door.hinge==='right'?b:a;
+      const normal=new THREE.Vector2(-direction.y,direction.x);
+      const middle=point((opening.start+opening.end)/2);
+      if(!pointInside(middle.x+normal.x*.4,middle.y+normal.y*.4))normal.multiplyScalar(-1);
+      const end=hinge.clone().addScaledVector(normal,opening.width*.93);
+      const leaf=new THREE.Mesh(new THREE.BoxGeometry(opening.width*.93,doorHeight-.10,.09),mat(0xc2a57d,.1,.7,true,.76));
+      leaf.position.set((hinge.x+end.x)/2,(doorHeight-.10)/2,(hinge.y+end.y)/2);
+      leaf.rotation.y=-Math.atan2(end.y-hinge.y,end.x-hinge.x);
+      roomGroup.add(leaf);leaf.userData.doorPart='leaf';doorMeshes.push(leaf);
+      const closed=opening.door.hinge==='right'?direction.clone().multiplyScalar(-1):direction.clone();
+      const swing=[];
+      for(let k=0;k<=24;k++){
+        const angle=Math.PI/2*k/24,loc=hinge.clone().addScaledVector(closed,opening.width*.93*Math.cos(angle)).addScaledVector(normal,opening.width*.93*Math.sin(angle));
+        swing.push(new THREE.Vector3(loc.x,.1,loc.y));
+      }
+      const arc=new THREE.Line(new THREE.BufferGeometry().setFromPoints(swing),new THREE.LineBasicMaterial({color:0x418975,transparent:true,opacity:.8,depthTest:false}));
+      roomGroup.add(arc);arc.userData.doorPart='swing';doorMeshes.push(arc);
+      const center=point((opening.start+opening.end)/2).addScaledVector(normal,.58);
+      const label=labelSprite(opening.door.label);label.scale.set(2.6,.58,1);label.position.set(center.x,.7,center.y);roomGroup.add(label);label.userData.doorPart='label';doorMeshes.push(label);
+      cursor=opening.end;
+    }
+    addWall(cursor,length);
+    const topLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(p.x,h,p.y),new THREE.Vector3(q.x,h,q.y)]),new THREE.LineBasicMaterial({color:0xb4b5a7,transparent:true,opacity:.45}));
+    roomGroup.add(topLine);wallMeshes.push(topLine);
   }
   updateWallVisibility();$('area-readout').textContent=`~${Math.round(polygonArea(getRoomPoints())/144)} sq ft`;
 }
@@ -378,7 +446,15 @@ function overlaps(a,b){
   }
   return true;
 }
-function updateWallVisibility(){for(const mesh of wallMeshes){mesh.visible=state.settings.walls;if(mesh.isMesh)mesh.material.opacity=state.settings.mode==='2d'?.18:.40;}}
+function updateWallVisibility(){
+  for(const mesh of wallMeshes){mesh.visible=state.settings.walls;if(mesh.isMesh)mesh.material.opacity=state.settings.mode==='2d'?.18:.40;}
+  for(const mesh of doorMeshes){
+    const part=mesh.userData.doorPart;
+    mesh.visible=part==='label'?true:part==='swing'?state.settings.mode==='2d':state.settings.walls;
+    if(part==='leaf')mesh.visible=state.settings.walls&&state.settings.mode==='3d';
+    if(part==='jamb')mesh.visible=state.settings.walls&&state.settings.mode==='3d';
+  }
+}
 function buildItems(){itemGroup.clear();meshes.clear();for(const item of state.items){const g=makeFurniture(item);const p=worldFromInches(item.x,item.y);g.position.copy(p);g.rotation.y=THREE.MathUtils.degToRad(item.rot);itemGroup.add(g);meshes.set(item.id,g);}updateSelectionVisuals();renderPieceList();renderInspector();}
 function updateItemMesh(item){const g=meshes.get(item.id);if(!g)return;g.position.copy(worldFromInches(item.x,item.y));g.rotation.y=THREE.MathUtils.degToRad(item.rot);}
 function updateSelectionVisuals(){for(const [id,g] of meshes){g.userData.outline.visible=id===selectedId;}}
@@ -396,15 +472,26 @@ function renderPieceList(){
 function roomField(name,label,unit='in'){
   const value=state.room[name];return `<div class="field"><label for="room-${name}">${label} <small>${unit}</small></label><input type="number" id="room-${name}" data-room="${name}" value="${value}" min="0.1" max="600" step="0.125"></div>`;
 }
-function roomMarkup(){return `<div class="eyebrow">Floor plan</div><h2 class="panel-title">The room</h2><div class="info-block" style="margin-top:15px"><div class="big">${Math.round(polygonArea(getRoomPoints())/144)} sq ft</div><p>Estimated area · Project 3 corrected to right angles</p></div>
-    <div class="readout"><span class="pill">Top: ${(state.room.top/12).toFixed(2)} ft</span><span class="pill">8 furniture pieces measured</span></div>
-    <p class="subtle">Select a piece to move and rotate it. Furniture positions are a sample layout, not its current arrangement.</p>
+function roomMarkup(){
+  const doorInputs=state.doors.map(d=>`<div class="eyebrow" style="margin-top:13px">${d.label}</div>
+    <div class="inline-fields">
+      <div class="field"><label for="door-${d.id}-width">Opening width <small>inches</small></label><input id="door-${d.id}-width" type="number" data-door="${d.id}" data-door-prop="width" min="20" max="60" step=".5" value="${d.width}"></div>
+      <div class="field"><label for="door-${d.id}-center">Left–right center <small>inches</small></label><input id="door-${d.id}-center" type="number" data-door="${d.id}" data-door-prop="center" min="-100" max="600" step=".5" value="${d.center}"></div>
+    </div>
+    <div class="field"><label for="door-${d.id}-hinge">Hinge side <small>estimated</small></label><select id="door-${d.id}-hinge" data-door="${d.id}" data-door-prop="hinge"><option value="left" ${d.hinge==='left'?'selected':''}>Left on wall plan</option><option value="right" ${d.hinge==='right'?'selected':''}>Right on wall plan</option></select></div>`).join('');
+  return `<div class="eyebrow">Floor plan</div><h2 class="panel-title">The room</h2><div class="info-block" style="margin-top:15px"><div class="big">${Math.round(polygonArea(getRoomPoints())/144)} sq ft</div><p>Estimated area · Project 3 corrected to right angles</p></div>
+    <div class="readout"><span class="pill">Top: ${(state.room.top/12).toFixed(2)} ft</span><span class="pill">2 doors added</span></div>
+    <p class="subtle">The front and bathroom doors replace the temporary glass and long table markers. Furniture positions are based on your saved layout.</p>
     <div class="button-row"><button class="btn" id="help-inline">Instructions</button><button class="btn" id="reset-layout">Reset layout</button></div>
+    <details><summary>Doors · adjust positions</summary><p class="subtle">Positions come from the saved furniture markers. Door widths and hinge sides are estimates. The front door is on the bottom wall; bathroom door is on the top wall.</p>
+      ${doorInputs}
+    </details>
     <details><summary>Room measurements · adjust scan</summary>
       <p class="subtle">Dimensions are in inches. The right-hand step and upper-left bump are estimated from the image. Adjust these after verifying them with a tape measure.</p>
       ${roomField('top','Top wall')}${roomField('upperRight','Upper right wall')}${roomField('rightStep','Right wall step (estimated)')}${roomField('lowerRight','Lower right wall')}${roomField('bottomRight','Bottom-right wall')}${roomField('bottomLip','Lower-left offset (estimated)')}${roomField('leftBump','Upper-left bump width (estimated)')}${roomField('bumpStart','Upper-left bump start (estimated)')}${roomField('bumpHeight','Upper-left bump height (estimated)')}
       <div class="field"><label for="room-wallHeight">Wall height <small>feet · estimated</small></label><input type="number" id="room-wallHeight" data-room="wallHeight" value="${state.room.wallHeight}" min="5" max="15" step="0.25"></div>
-    </details><details><summary>Save and transfer</summary><p class="subtle">Autosave works on this phone. Share a layout link to open the same arrangement on another device; export a JSON file for backup.</p><div class="button-row"><button class="btn" id="import-inline">Import JSON</button><button class="btn" id="picture-inline">Save picture</button></div></details>`;}
+    </details><details><summary>Save and transfer</summary><p class="subtle">Autosave works on this phone. Share a layout link to open the same arrangement on another device; export a JSON file for backup.</p><div class="button-row"><button class="btn" id="import-inline">Import JSON</button><button class="btn" id="picture-inline">Save picture</button></div></details>`;
+}
 function itemMarkup(item){const d=CATALOG[item.kind];const outside=!furnitureInside(item);const collides=state.items.some(o=>o.id!==item.id&&overlaps(item,o));
   return `<div class="eyebrow">Furniture editor</div><h2 class="panel-title" style="margin-top:4px">${d.label}</h2>
   <div class="readout"><span class="pill">${d.w} in wide</span><span class="pill">${d.d} in deep</span></div>
@@ -435,6 +522,14 @@ function renderInspector(){const item=itemById(selectedId),root=$('inspector');r
     $('help-inline').addEventListener('click',openHelp);$('reset-layout').addEventListener('click',resetLayout);
     $('import-inline')?.addEventListener('click',()=> $('import-file').click());
     $('picture-inline')?.addEventListener('click',downloadPicture);
+    root.querySelectorAll('[data-door]').forEach(el=>el.addEventListener('change',e=>{
+      const door=state.doors.find(d=>d.id===e.target.dataset.door);if(!door)return;
+      const prop=e.target.dataset.doorProp,value=prop==='hinge'?e.target.value:Number(e.target.value);
+      if(prop!=='hinge'&&!Number.isFinite(value))return;
+      checkpoint();
+      door[prop]=prop==='hinge'?(value==='right'?'right':'left'):prop==='width'?THREE.MathUtils.clamp(value,20,60):THREE.MathUtils.clamp(value,-100,600);
+      buildRoom();save();renderInspector();
+    }));
     root.querySelectorAll('input[data-room]').forEach(el=>el.addEventListener('change',e=>{
       const prop=e.target.dataset.room,num=Number(e.target.value);if(!Number.isFinite(num)||num<=0){renderInspector();return;}
       checkpoint();state.room[prop]=prop==='wallHeight'?THREE.MathUtils.clamp(num,5,15):THREE.MathUtils.clamp(num,.125,600);
@@ -456,6 +551,7 @@ function resetLayout(){if(!confirm('Reset furniture positions and room dimension
 function setMode(mode,persist=true){state.settings.mode=mode;camera=mode==='2d'?ortho:perspective;controls.object=camera;controls.enableRotate=mode==='3d';controls.mouseButtons.LEFT=mode==='2d'?THREE.MOUSE.PAN:THREE.MOUSE.ROTATE;controls.mouseButtons.RIGHT=THREE.MOUSE.PAN;
   controls.touches.ONE=mode==='2d'?THREE.TOUCH.PAN:THREE.TOUCH.ROTATE;controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;
   $('btn-2d').classList.toggle('active',mode==='2d');$('btn-3d').classList.toggle('active',mode==='3d');
+  updateWallVisibility();
   $('hint').innerHTML=mode==='2d'?'<strong>Top-down view.</strong> Drag furniture to move. Drag empty space to pan; pinch to zoom.':'<strong>3D view.</strong> Drag furniture to move. Drag empty space to orbit; pinch to zoom.';
   updateWallVisibility();resetCamera();if(persist)save();
 }
