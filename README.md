@@ -5,7 +5,7 @@ An interactive, mobile-friendly 2D / 3D floor planner built with Three.js. No bu
 ## Features
 - Touch / mouse drag to reposition furniture; rotate in 1° increments or with 15° buttons.
 - 2D overhead plan and orbitable 3D room views; pan, orbit, pinch to zoom.
-- Eight furniture footprints available in the catalog using supplied handwritten dimensions (inches). The six actual pieces are in the starting layout; the glass and long tables were only doorway markers.
+- Eight furniture footprints available in the catalog using supplied handwritten dimensions (inches). All eight items are present in the starting layout. The glass and long tables had temporarily served as doorway markers but have now been restored as independent movable furniture.
 - Editable room measurements and 90-degree corners using the Project 3 AR measurement as a starting point.
 - Two actual wall openings (front door and bathroom door), with approximate widths, editable left–right positions, and optional hinge side. 2D swing arcs and 3D door leaves.
 - Floor grid, wall visibility, snapping, overlap/out-of-room warnings, undo and redo.
@@ -39,6 +39,6 @@ The room origin (0, 0) is the **left end of the main top wall**. Position X is i
 ## Important limitations
 - Phone-based AR room measurements disagreed substantially in early scans. Confirm critical wall and recess lengths with a tape measure before relying on exact fit.
 - Front and bathroom openings are modeled at the user's markers, but their widths, opening directions, and hinge sides must be physically verified; windows are not yet mapped.
-- Old exported layouts are supported; when their glass or long table markers match the supplied door-marker coordinates, those markers are removed and replaced with doors.
+- Old exported layouts are supported; missing glass and long tables are restored once, or relocated inside the room if they remain at the old door-marker coordinates. The actual doors remain in the walls independently.
 - Furniture models are stylized approximations. Collision warnings assess 2D footprints; they do not prevent placement.
 - Layout links include positions and dimensions in the URL, not in any database. Anyone with the link can see the arrangement.
