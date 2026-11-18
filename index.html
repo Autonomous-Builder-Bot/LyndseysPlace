@@ -146,7 +146,7 @@
   </header>
   <div class="shell">
     <aside class="side left mobile-active" id="furniture-panel">
-      <div class="panel-heading"><div><div class="eyebrow">Your collection</div><h2 class="panel-title">Furniture</h2></div><span class="pill" id="piece-count">6 items</span></div>
+      <div class="panel-heading"><div><div class="eyebrow">Your collection</div><h2 class="panel-title">Furniture</h2></div><span class="pill" id="piece-count">8 items</span></div>
       <div class="piece-list" id="piece-list"></div>
       <div class="button-row"><button type="button" class="btn" id="add-btn">+ Add another piece</button></div>
       <div class="side-note"><strong>Based on your measurements.</strong> Furniture footprints use the dimensions in the handwritten list. The models' heights and appearance are illustrative.</div>
@@ -203,35 +203,53 @@ const DEFAULT_ITEMS = [
   {id:'tv-1',kind:'tv',x:223,y:136,rot:90},
   {id:'couch-1',kind:'couch',x:163.2,y:190.6,rot:180},
   {id:'bedside-1',kind:'bedside',x:91.2,y:8.8,rot:0},
+  {id:'long-1',kind:'long',x:89,y:111,rot:0},
+  {id:'glass-1',kind:'glass',x:141,y:143,rot:0},
   {id:'metal-1',kind:'metal',x:54.8,y:119.2,rot:90},
   {id:'cat-1',kind:'cat',x:221.4,y:86.2,rot:0}
 ];
 const STORAGE_KEY='lyndseys-place-planner-v1';
 const $=id=>document.getElementById(id);
 const clone=o=>JSON.parse(JSON.stringify(o));
-const defaultState=()=>({room:clone(ROOM_DEFAULT),doors:clone(DOOR_DEFAULT),items:clone(DEFAULT_ITEMS),settings:{mode:'3d',snap:false,walls:true}});
+const defaultState=()=>({room:clone(ROOM_DEFAULT),doors:clone(DOOR_DEFAULT),items:clone(DEFAULT_ITEMS),furnitureRestoredV2:true,settings:{mode:'3d',snap:false,walls:true}});
 function validState(s){
   if(!s||!Array.isArray(s.items)||!s.room||typeof s.room!=='object')throw new Error('Not a valid room layout');
   const room={};
   for(const [key,v] of Object.entries(ROOM_DEFAULT)){const n=Number(s.room[key]??v);room[key]=Number.isFinite(n)?THREE.MathUtils.clamp(n,key==='wallHeight'?5:.1,key==='wallHeight'?15:600):v;}
-  const legacy=!Array.isArray(s.doors);
+  const migratingFurniture=!s.furnitureRestoredV2;
   const ids=new Set();
   const items=s.items.slice(0,100).filter(i=>{
     if(!i||!CATALOG[i.kind]||!Number.isFinite(Number(i.x))||!Number.isFinite(Number(i.y)))return false;
-    // Furniture used as temporary door markers in the uploaded November 17 layout.
-    if(legacy&&i.kind==='long'&&Math.abs(Number(i.x)-13.8)<8&&Math.abs(Number(i.y)+8.8)<8)return false;
-    if(legacy&&i.kind==='glass'&&Math.abs(Number(i.x)-109.6)<8&&Math.abs(Number(i.y)-214)<8)return false;
     return true;
   }).map((i,j)=>{
     let id=String(i.id||`${i.kind}-${j+1}`).slice(0,45);if(ids.has(id))id=`${i.kind}-${j}-${Math.floor(Math.random()*100000)}`;ids.add(id);
     return{id,kind:i.kind,x:THREE.MathUtils.clamp(Number(i.x),-1000,1000),y:THREE.MathUtils.clamp(Number(i.y),-1000,1000),rot:((Number(i.rot)||0)%360+360)%360};
   });
+  // Upgrade layouts saved when tables were temporarily replaced by door markers.
+  // Do this only once: subsequent deliberate furniture removals must remain removed.
+  if(migratingFurniture){
+    const restored=[
+      {id:'long-1',kind:'long',x:89,y:111,rot:0},
+      {id:'glass-1',kind:'glass',x:141,y:143,rot:0}
+    ];
+    for(const piece of restored){
+      const existing=items.find(item=>item.kind===piece.kind);
+      if(!existing){
+        const id=ids.has(piece.id)?`${piece.kind}-restored`:piece.id;
+        items.push({...piece,id});ids.add(id);
+      }else if(piece.kind==='long'&&Math.abs(existing.x-13.8)<8&&Math.abs(existing.y+8.8)<8){
+        existing.x=piece.x;existing.y=piece.y;existing.rot=piece.rot;
+      }else if(piece.kind==='glass'&&Math.abs(existing.x-109.6)<8&&Math.abs(existing.y-214)<8){
+        existing.x=piece.x;existing.y=piece.y;existing.rot=piece.rot;
+      }
+    }
+  }
   const doors=DOOR_DEFAULT.map(d=>{
     const saved=Array.isArray(s.doors)?s.doors.find(x=>x&&x.id===d.id):null;
     const center=Number(saved?.center??d.center),width=Number(saved?.width??d.width);
     return{...d,center:Number.isFinite(center)?THREE.MathUtils.clamp(center,-100,600):d.center,width:Number.isFinite(width)?THREE.MathUtils.clamp(width,20,60):d.width,hinge:saved?.hinge==='right'?'right':'left'};
   });
-  return{room,doors,items,settings:{mode:s.settings?.mode==='2d'?'2d':'3d',snap:s.settings?.snap!==false,walls:s.settings?.walls!==false}};
+  return{room,doors,items,furnitureRestoredV2:true,settings:{mode:s.settings?.mode==='2d'?'2d':'3d',snap:s.settings?.snap!==false,walls:s.settings?.walls!==false}};
 }
 function loadInitial(){
   try {if(location.hash.startsWith('#layout='))return validState(JSON.parse(decodeURIComponent(location.hash.slice(8))));}catch(e){console.warn('Invalid shared layout',e);}
@@ -481,7 +499,7 @@ function roomMarkup(){
     <div class="field"><label for="door-${d.id}-hinge">Hinge side <small>estimated</small></label><select id="door-${d.id}-hinge" data-door="${d.id}" data-door-prop="hinge"><option value="left" ${d.hinge==='left'?'selected':''}>Left on wall plan</option><option value="right" ${d.hinge==='right'?'selected':''}>Right on wall plan</option></select></div>`).join('');
   return `<div class="eyebrow">Floor plan</div><h2 class="panel-title">The room</h2><div class="info-block" style="margin-top:15px"><div class="big">${Math.round(polygonArea(getRoomPoints())/144)} sq ft</div><p>Estimated area · Project 3 corrected to right angles</p></div>
     <div class="readout"><span class="pill">Top: ${(state.room.top/12).toFixed(2)} ft</span><span class="pill">2 doors added</span></div>
-    <p class="subtle">The front and bathroom doors replace the temporary glass and long table markers. Furniture positions are based on your saved layout.</p>
+    <p class="subtle">Both doors are marked independently of the furniture. The glass table and long table have been restored and placed inside the room; drag them anywhere you like. Other furniture positions are based on your saved layout.</p>
     <div class="button-row"><button class="btn" id="help-inline">Instructions</button><button class="btn" id="reset-layout">Reset layout</button></div>
     <details><summary>Doors · adjust positions</summary><p class="subtle">Positions come from the saved furniture markers. Door widths and hinge sides are estimates. The front door is on the bottom wall; bathroom door is on the top wall.</p>
       ${doorInputs}
