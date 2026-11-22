@@ -5,7 +5,10 @@ An interactive, mobile-friendly 2D / 3D floor planner built with Three.js. No bu
 ## Features
 - Touch / mouse drag to reposition furniture; rotate in 1° increments or with 15° buttons.
 - 2D overhead plan and orbitable 3D room views; pan, orbit, pinch to zoom.
-- Eight furniture footprints available in the catalog using supplied handwritten dimensions (inches). All eight items are present in the starting layout. The glass and long tables had temporarily served as doorway markers but have now been restored as independent movable furniture.
+- Eight furniture types initialized from the supplied handwritten footprints. All eight items remain in the starting layout, including the restored glass and long tables.
+- Add furniture from an on-screen form rather than a numbered prompt. Choose any existing model or a generic custom 3D rectangle, set its name and width/depth/height (inches), and insert it into an available area.
+- Select any existing item to rename it and edit its individual width, depth, height, rotation, and position. Duplicate items with their custom dimensions, or remove them from the furniture list (×) or edit panel; Undo restores removals.
+- 3D models scale with per-item dimensions. Legacy saved layouts/imports automatically receive the original dimensions without changing their placement.
 - Editable room measurements and 90-degree corners using the Project 3 AR measurement as a starting point.
 - Two actual wall openings (front door and bathroom door), with approximate widths, editable left–right positions, and optional hinge side. 2D swing arcs and 3D door leaves.
 - Floor grid, wall visibility, snapping, overlap/out-of-room warnings, undo and redo.
@@ -16,6 +19,8 @@ An interactive, mobile-friendly 2D / 3D floor planner built with Three.js. No bu
 Open `index.html` through a local web server (e.g. `python -m http.server 8000`) or enable GitHub Pages at **Settings → Pages → Deploy from a branch → main / root**. Visit `https://autonomous-builder-bot.github.io/LyndseysPlace/` after Pages has deployed.
 
 The page requires an internet connection to load Three.js from jsDelivr. No other dependencies are hosted externally.
+
+On a phone, open the **Furniture** tab and select **+ Add furniture**. After adding a piece, it opens in **Edit & room**, where you can change its name, size, position and rotation. Furniture changes autosave to the same browser; export JSON for an independent backup.
 
 ## Measured furniture footprints
 
