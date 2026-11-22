@@ -330,7 +330,7 @@ function labelSprite(label){
   const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));sprite.scale.set(2.55,.64,1);sprite.renderOrder=1000;return sprite;
 }
 function makeFurniture(item){
-  const d=CATALOG[item.kind],dims=itemDims(item),w=dims.w/12,z=dims.d/12,g=new THREE.Group();g.userData.itemId=item.id;
+  const d=CATALOG[item.kind],dims=itemDims(item),w=d.w/12,z=d.d/12,g=new THREE.Group();g.userData.itemId=item.id;
   const modelRoot=new THREE.Group();g.add(modelRoot);
   const inset=.11;
   if(item.kind==='bed'){
@@ -383,8 +383,9 @@ function makeFurniture(item){
     box(modelRoot,w,2.4,z,0,1.2,0,warmWood);
     box(modelRoot,w+.02,.07,z+.02,0,2.405,0,darkWood);
   }
-  modelRoot.scale.y=(dims.h/12)/MODEL_HEIGHT[item.kind];
-  const edgeW=w+.14,edgeD=z+.14;
+  // Scale a stable base model so very small custom dimensions never create negative geometries.
+  modelRoot.scale.set(dims.w/d.w,(dims.h/12)/MODEL_HEIGHT[item.kind],dims.d/d.d);
+  const edgeW=dims.w/12+.14,edgeD=dims.d/12+.14;
   const corners=[[-edgeW/2,-edgeD/2],[edgeW/2,-edgeD/2],[edgeW/2,edgeD/2],[-edgeW/2,edgeD/2]];
   const geometry=new THREE.BufferGeometry().setFromPoints(corners.map(([xx,zz])=>new THREE.Vector3(xx,.055,zz)));
   const outline=new THREE.LineLoop(geometry,new THREE.LineBasicMaterial({color:0xd16f51,depthTest:false,linewidth:3}));outline.visible=false;outline.renderOrder=800;g.add(outline);g.userData.outline=outline;
